@@ -363,7 +363,6 @@ public class ParleyComposeView: UIView {
         }
     }
 
-    @MainActor
     private func requestPhotoLibraryAuthorization() async -> PHAuthorizationStatus {
         await withCheckedContinuation { continuation in
             PHPhotoLibrary.requestAuthorization { status in

@@ -29,7 +29,7 @@ final actor NetworkMonitor<NWPathMonitorType: NWPathMonitorProtocol>: Sendable, 
         self.delegate = delegate
     }
 
-    func start() {
+    func start() async {
         networkMonitor.pathUpdateHandler = { [weak self] path in
             guard let self else { return }
 
@@ -39,10 +39,9 @@ final actor NetworkMonitor<NWPathMonitorType: NWPathMonitorProtocol>: Sendable, 
         }
         networkMonitor.start(queue: workerQueue)
         let status = networkMonitor.currentPath.status
-        Task {
-            /// When there is no change, the start monitor will not call the `pathUpdateHandler` on start.
-            await delegate?.didUpdateConnection(isConnected: Self.hasConnection(status: status))
-        }
+        
+        /// When there is no change, the start monitor will not call the `pathUpdateHandler` on start.
+        await delegate?.didUpdateConnection(isConnected: Self.hasConnection(status: status))
     }
 
     func stop() {

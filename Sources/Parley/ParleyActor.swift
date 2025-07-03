@@ -158,11 +158,10 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
 
     // MARK: Reachability
 
-    private func setupReachability() {
+    private func setupReachability() async {
         reachibilityService = try? ReachabilityService()
-        Task {
-            await reachibilityService?.startNotifier()
-        }
+        await reachibilityService?.startNotifier()
+        
         reachibilityWatcher = reachibilityService?.reachabilityPublisher().sink(receiveValue: { [weak self] isReachable in
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -251,7 +250,7 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
         }
         isLoading = true
 
-        setupReachability()
+        await setupReachability()
 
         if isCachingEnabled() {
             await updateSecretInDataSource()
@@ -359,9 +358,7 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
     private func clearMessagesAndDataSources() async {
         await messageDataSource?.clear()
         await keyValueDataSource?.clear()
-        Task {
-            await messagesInteractor?.clear()
-        }
+        await messagesInteractor?.clear()
     }
 
     // MARK: Devices
@@ -511,10 +508,8 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
             bestEffortMessage = storedMessage
         }
         
-        await MainActor.run {
-            if let announcement = Message.Accessibility.getAccessibilityAnnouncement(for: bestEffortMessage) {
-                UIAccessibility.post(notification: .announcement, argument: announcement)
-            }
+        if let announcement = await Message.Accessibility.getAccessibilityAnnouncement(for: bestEffortMessage) {
+            await UIAccessibility.post(notification: .announcement, argument: announcement)
         }
         
         await messagesInteractor.handleAgentStoppedTyping()
@@ -529,7 +524,7 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
         case .startTyping:
             await agentStartTyping()
         case .stopTyping:
-            agentStopTyping()
+            await agentStopTyping()
         }
     }
 
@@ -542,9 +537,7 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
             userStartTypingDate == nil || Date().timeIntervalSince1970 - userStartTypingDate!
                 .timeIntervalSince1970 > kParleyEventStartTypingTriggerAfter
         {
-            Task {
-                try? await eventRemoteService.fire(.startTyping)
-            }
+            try? await eventRemoteService.fire(.startTyping)
 
             userStartTypingDate = Date()
         }
@@ -563,9 +556,7 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
     private func stopTypingTriggered() async {
         if await reachibilityService?.reachable == false { return }
 
-        Task {
-            try? await self.eventRemoteService.fire(.stopTyping)
-        }
+        try? await self.eventRemoteService.fire(.stopTyping)
         
         self.userStartTypingDate = nil
         self.userStopTypingTimer = nil
@@ -597,7 +588,7 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
         }
     }
 
-    private func agentStopTyping() {
+    private func agentStopTyping() async {
         guard agentIsTyping else { return }
 
         agentIsTyping = false
@@ -605,9 +596,7 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
         agentStopTypingTimer?.invalidate()
         agentStopTypingTimer = nil
 
-        Task {
-            await messagesInteractor.handleAgentStoppedTyping()
-        }
+        await messagesInteractor.handleAgentStoppedTyping()
     }
 }
 
