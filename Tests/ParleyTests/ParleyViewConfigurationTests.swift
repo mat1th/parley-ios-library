@@ -58,14 +58,14 @@ struct ParleyViewConfigurationTests {
         }
         
         await parleyStub.set(messagesManager: nil)
-        newlyInstantiatedSut.didChangeState(.unconfigured)
+        await newlyInstantiatedSut.didChangeState(.unconfigured)
         
         await MainActor.run {
             #expect(newlyInstantiatedSut.pollingService == nil)
         }
         
         await parleyStub.set(messagesManager: MessagesManagerStub())
-        newlyInstantiatedSut.didChangeState(.configured)
+        await  newlyInstantiatedSut.didChangeState(.configured)
         
         await MainActor.run {
             #expect(newlyInstantiatedSut.pollingService != nil)

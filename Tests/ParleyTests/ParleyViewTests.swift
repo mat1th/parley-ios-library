@@ -122,7 +122,7 @@ struct ParleyViewTests {
         await setup()
 
         await sut.reachable(pushEnabled: parleyStub.pushEnabled)
-        sut.didChangeState(.configured)
+        await sut.didChangeState(.configured)
         sut.appearance.info.textViewAppearance.paragraphStyle.alignment = .center
 
         applySize(sut: sut)
@@ -159,7 +159,7 @@ struct ParleyViewTests {
         await setup(mediaLoader: mediaLoaderStub)
 
         await sut.reachable(pushEnabled: parleyStub.pushEnabled)
-        sut.didChangeState(.configured)
+        await sut.didChangeState(.configured)
         
         applySize(sut: sut)
         assert(sut: sut)
@@ -209,7 +209,7 @@ struct ParleyViewTests {
         await setup(mediaLoader: mediaLoaderStub)
         
         await sut.reachable(pushEnabled: parleyStub.pushEnabled)
-        sut.didChangeState(.configured)
+        await sut.didChangeState(.configured)
         
         try await wait(milliseconds: 30)
         
@@ -238,7 +238,7 @@ struct ParleyViewTests {
         )
 
         await sut.reachable(pushEnabled: parleyStub.pushEnabled)
-        sut.didChangeState(.configured)
+        await sut.didChangeState(.configured)
         sut.appearance.info.textViewAppearance.paragraphStyle.alignment = .center
 
         applySize(sut: sut)

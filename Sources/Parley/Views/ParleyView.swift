@@ -536,7 +536,8 @@ extension ParleyView: ParleyDelegate {
 
             activityIndicatorView.stopAnimating()
 
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
                 stickyView.text = await messagesManager?.stickyMessage
                 stickyView.isHidden = await messagesManager?.stickyMessage == nil
                 
@@ -544,11 +545,9 @@ extension ParleyView: ParleyDelegate {
                 
                 messagesTableView.scroll(to: .bottom, animated: false)
 
-                DispatchQueue.main.async { [weak self] in
-                    self?.messagesTableView.scroll(to: .bottom, animated: false)
-                    self?.updateSuggestionsAlpha() // For VoiceOver
-                    self?.messagesTableView.isHidden = false
-                }
+                messagesTableView.scroll(to: .bottom, animated: false)
+                updateSuggestionsAlpha() // For VoiceOver
+                messagesTableView.isHidden = false
             }
         }
     }

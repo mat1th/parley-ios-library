@@ -67,7 +67,6 @@ extension MessagesPresenter: MessagesPresenterProtocol {
     
     func set(sections: [ParleyChronologicalMessageCollection.Section]) {
         var snapshot = Snapshot(welcomeMessage: welcomeMessage, calendar: currentSnapshot.calendar)
-        _ = snapshot.set(welcomeMessage: welcomeMessage)
         _ = snapshot.setLoading(isLoadingMessages)
         _ = snapshot.set(agentTyping: isAgentTyping)
         

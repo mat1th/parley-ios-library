@@ -59,19 +59,24 @@ final class AlamofireNetworkSession: ParleyNetworkSession {
             )
         }
     }
-    
-    func upload(data: Data, to url: URL, method: ParleyHTTPRequestMethod, headers: [String : String]) async throws(ParleyHTTPErrorResponse) -> ParleyHTTPDataResponse {
+
+    func upload(
+        data: Data,
+        to url: URL,
+        method: ParleyHTTPRequestMethod,
+        headers: [String : String]
+    ) async throws(ParleyHTTPErrorResponse) -> ParleyHTTPDataResponse {
         let response = await withCheckedContinuation { continuation in
             session.upload(data, to: url, method: Alamofire.HTTPMethod(method), headers: HTTPHeaders(headers))
                 .response { response in
                     continuation.resume(returning: response)
                 }
         }
-        
+
         guard let statusCode = response.response?.statusCode else {
             throw ParleyHTTPErrorResponse(error: HTTPResponseError.dataMissing)
         }
-        
+
         switch response.result {
         case .success(let data):
             return ParleyHTTPDataResponse(

@@ -1,6 +1,6 @@
+import Combine
 import Foundation
 import UIKit
-import Combine
 
 protocol ParleyProtocol: Actor, AnyObject {
     var state: Parley.State { get }
@@ -119,7 +119,7 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
 
     private var userStartTypingDate: Date?
     private var userStopTypingTimer: Timer?
-    
+
     private var networkMonitor: NetworkMonitorProtocol?
     var reachable: Bool {
         get async {
@@ -173,23 +173,23 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
 
     // MARK: Reachability
 
-    private func setupReachability() {
+    private func setupReachability() async {
         reachibilityService = try? ReachabilityService()
-        Task {
-            await reachibilityService?.startNotifier()
-        }
-        reachibilityWatcher = reachibilityService?.reachabilityPublisher().sink(receiveValue: { [weak self] isReachable in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                if isReachable {
-                    await self.delegate?.reachable(pushEnabled: self.pushEnabled)
-                    
-                    await self.configureWhenNeeded()
-                } else {
-                    await self.delegate?.unreachable(isCachingEnabled: self.isCachingEnabled())
+        await reachibilityService?.startNotifier()
+
+        reachibilityWatcher = reachibilityService?.reachabilityPublisher()
+            .sink(receiveValue: { [weak self] isReachable in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    if isReachable {
+                        await self.delegate?.reachable(pushEnabled: self.pushEnabled)
+
+                        await self.configureWhenNeeded()
+                    } else {
+                        await self.delegate?.unreachable(isCachingEnabled: self.isCachingEnabled())
+                    }
                 }
-            }
-        })
+            })
     }
 
     // MARK: Observers
@@ -215,7 +215,11 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
             name: UIApplication.willEnterForegroundNotification,
             object: nil
         )
-        NotificationCenter.default.removeObserver(self, name: UIApplication.didEnterBackgroundNotification, object: nil)
+        NotificationCenter.default.removeObserver(
+            self,
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
     }
 
     @objc
@@ -233,7 +237,7 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
             await reachibilityService?.stopNotifier()
         }
     }
-    
+
     public func setup(
         secret: String,
         uniqueDeviceIdentifier: String?,
@@ -287,7 +291,7 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
         }
         isLoading = true
 
-        setupReachability()
+        await setupReachability()
 
         if isCachingEnabled() {
             await updateSecretInDataSource()
@@ -305,18 +309,21 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
                 await set(state: .configuring)
             }
         }
-        
+
         do {
             _ = try await deviceRepository.register(device: makeDeviceData())
-            
-            if let lastMessage = await messagesManager.lastSentMessage, let remoteId = lastMessage.remoteId {
+
+            if
+                let lastMessage = await messagesManager.lastSentMessage,
+                let remoteId = lastMessage.remoteId
+            {
                 let messageCollection = try await messageRepository.findAfter(remoteId)
                 await messagesManager.handle(messageCollection, .after)
             } else {
                 let messageCollection = try await messageRepository.findAll()
                 await messagesManager.handle(messageCollection, .all)
             }
-            
+
             await send(messagesManager.pendingMessages)
 
             isLoading = false
@@ -330,7 +337,7 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
             }
         }
     }
-    
+
     private func set(state: State) async {
         self.state = state
         await MainActor.run {
@@ -395,9 +402,7 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
     private func clearMessagesAndDataSources() async {
         await messageDataSource?.clear()
         await keyValueDataSource?.clear()
-        Task {
-            await messagesInteractor?.clear()
-        }
+        await messagesInteractor?.clear()
     }
 
     // MARK: Devices
@@ -507,9 +512,11 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
     }
 
     private func addNewMessage(_ message: Message) async {
-        guard let messagesInteractor else { fatalError("Missing messages interactor (Parley wasn't initialized).") }
-        userStopTypingTimer?.fire();
-        
+        guard let messagesInteractor else {
+            fatalError("Missing messages interactor (Parley wasn't initialized).")
+        }
+        userStopTypingTimer?.fire()
+
         await messagesInteractor.handleNewMessage(message)
     }
 
@@ -534,32 +541,32 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
 
     private func handleMessage(_ userInfo: [String: Any]) async {
         guard let messagesInteractor else {
-            print("Parley: Remote message not handled because Parley wasn't initialized yet.") ; return
+            print("Parley: Remote message not handled because Parley wasn't initialized yet.")
+            return
         }
-        
+
         guard
             let id = userInfo["id"] as? Int,
             let typeId = userInfo["typeId"] as? Int,
-            let type = MessageResponse.MessageType(rawValue: typeId)?.toDomainModel()
-        else { return }
-        
+            let type = MessageResponse.MessageType(rawValue: typeId)?.toDomainModel() else { return }
+
         let body = userInfo["body"] as? String
 
-        let message = Message.push(remoteId: id, message: body, type: type )
-        
+        let message = Message.push(remoteId: id, message: body, type: type)
+
         if isLoading { return } // Ignore remote messages when configuring chat.
 
         var bestEffortMessage: Message = message
         if let storedMessage = try? await messageRepository.find(id) {
             bestEffortMessage = storedMessage
         }
-        
+
         await MainActor.run {
             if let announcement = Message.Accessibility.getAccessibilityAnnouncement(for: bestEffortMessage) {
                 UIAccessibility.post(notification: .announcement, argument: announcement)
             }
         }
-        
+
         await messagesInteractor.handleAgentStoppedTyping()
         await messagesInteractor.handleNewMessage(bestEffortMessage)
     }
@@ -582,8 +589,10 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
         guard await reachibilityService?.reachable == true else { return }
 
         if
-            userStartTypingDate == nil || Date().timeIntervalSince1970 - userStartTypingDate!
-                .timeIntervalSince1970 > kParleyEventStartTypingTriggerAfter
+            userStartTypingDate == nil
+            || Date().timeIntervalSince1970
+            - userStartTypingDate!
+            .timeIntervalSince1970 > kParleyEventStartTypingTriggerAfter
         {
             Task {
                 try? await eventRemoteService.fire(.startTyping)
@@ -602,16 +611,16 @@ public actor ParleyActor: ParleyProtocol, ReachabilityProvider {
             }
         }
     }
-    
+
     private func stopTypingTriggered() async {
         if await reachibilityService?.reachable == false { return }
 
         Task {
             try? await self.eventRemoteService.fire(.stopTyping)
         }
-        
-        self.userStartTypingDate = nil
-        self.userStopTypingTimer = nil
+
+        userStartTypingDate = nil
+        userStopTypingTimer = nil
     }
 
     private func agentStartTyping() async {
@@ -764,7 +773,7 @@ extension ParleyActor {
     public func setUserInformation(
         _ authorization: String,
         additionalInformation: [String: String]? = nil
-    )  async throws(ConfigurationError) {
+    ) async throws(ConfigurationError) {
         userAuthorization = authorization
         userAdditionalInformation = additionalInformation
 
@@ -837,6 +846,6 @@ extension ParleyActor {
     }
 
     public func setAlwaysPolling(_ enabled: Bool) {
-        self.alwaysPolling = enabled
+        alwaysPolling = enabled
     }
 }

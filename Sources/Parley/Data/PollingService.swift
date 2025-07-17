@@ -7,7 +7,6 @@ protocol PollingServiceProtocol: Sendable, AnyObject {
     func stopRefreshing()
 }
 
-@MainActor
 final class PollingService: PollingServiceProtocol {
 
     private enum TimerInterval: TimeInterval {
@@ -57,6 +56,8 @@ final class PollingService: PollingServiceProtocol {
 
     @MainActor
     func startRefreshing() {
+        timer?.invalidate()
+        timer = nil
         setTimer(interval: .twoSeconds)
         addObservers()
     }
@@ -81,9 +82,8 @@ final class PollingService: PollingServiceProtocol {
     private func refreshFeed() async {
         guard
             let id = await messagesManager.lastSentMessage?.remoteId,
-            timer?.isValid == true
-        else { return }
-        
+            timer?.isValid == true else { return }
+
         do {
             let messageCollection = try await messageRepository.findAfter(id)
             guard !messageCollection.messages.isEmpty else {
@@ -122,7 +122,7 @@ final class PollingService: PollingServiceProtocol {
 
     @objc
     private func willEnterForeground() {
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let self else { return }
             timer?.invalidate()
             timer = nil
@@ -132,7 +132,7 @@ final class PollingService: PollingServiceProtocol {
 
     @objc
     private func didEnterBackground() {
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             self?.timer?.invalidate()
         }
     }

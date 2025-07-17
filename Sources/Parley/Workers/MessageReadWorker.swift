@@ -34,10 +34,8 @@ final class MessageReadWorker {
     }
     
     func queueMessageRead(messageId: Int) {
-        Task {
-            pendingIds.insert(messageId)
-            submissionQueue.send(())
-        }
+        pendingIds.insert(messageId)
+        submissionQueue.send(())
     }
 }
 
