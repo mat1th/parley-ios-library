@@ -2,16 +2,53 @@ import UIKit
 
 extension UIView {
 
-    func present(_ viewControllerToPresent: UIViewController, animated flag: Bool, completion: (() -> Void)? = nil) {
-        var viewController = UIApplication.shared.windows.first(where: \.isKeyWindow)?.rootViewController
-        if viewController?.presentedViewController != nil {
-            viewController = viewController?.presentedViewController
+    func present(_ viewControllerToPresent: UIViewController, animated: Bool, completion: (() -> Void)? = nil) {    
+        if let owningViewController = self.parentViewController {
+            owningViewController.present(viewControllerToPresent, animated: animated, completion: completion)
+        } else {
+            if let rootViewController = activeSceneRootViewController { 
+                let presentingVC = self.findTopViewController(from: rootViewController)
+                presentingVC.present(viewControllerToPresent, animated: animated, completion: completion)
+            }
         }
+    }
+    
+    var activeSceneRootViewController: UIViewController? {
+        guard let windowScene = UIApplication.shared.connectedScenes.first(where: {
+            $0.activationState == .foregroundActive
+        }) as? UIWindowScene else { return nil }
+        return windowScene.windows.first(where: \.isKeyWindow)?.rootViewController
+    }
+    
+    var parentViewController: UIViewController? {
+        var responder: UIResponder? = self
+        while let nextResponder = responder?.next {
+            if let viewController = nextResponder as? UIViewController {
+                return viewController
+            }
+            responder = nextResponder
+        }
+        return nil
+    }
+    
+    func findTopViewController(from viewController: UIViewController) -> UIViewController {
+        if let presented = viewController.presentedViewController {
+            return findTopViewController(from: presented)
+        }
+        
         if let navigationController = viewController as? UINavigationController {
-            viewController = navigationController.viewControllers.last
+            if let topVC = navigationController.topViewController {
+                return findTopViewController(from: topVC)
+            }
         }
-
-        viewController?.present(viewControllerToPresent, animated: true, completion: nil)
+        
+        if let tabBarController = viewController as? UITabBarController {
+            if let selected = tabBarController.selectedViewController {
+                return findTopViewController(from: selected)
+            }
+        }
+        
+        return viewController
     }
 
     func watchForVoiceOverDidChangeNotification(observer: AnyObject) {

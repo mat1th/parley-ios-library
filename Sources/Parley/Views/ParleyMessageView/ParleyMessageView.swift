@@ -889,8 +889,13 @@ final class ParleyMessageView: UIView {
                 displayFailedLoadingFile()
                 return
             }
-
-            delegate?.shareMedia(url: url)
+            
+            if let vc = parentViewController ?? activeSceneRootViewController {
+                let sourceRect = convert(self.bounds, to: vc.view)
+                delegate?.shareMedia(url: url, source: sourceRect)
+            } else {
+                delegate?.shareMedia(url: url, source: self.bounds)
+            }
         }
     }
 
