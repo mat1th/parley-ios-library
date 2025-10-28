@@ -894,10 +894,12 @@ extension ParleyView: MessageTableViewCellDelegate {
     func shareMedia(url: URL, source: CGRect) {
         let activityViewController = UIActivityViewController(activityItems: [url], applicationActivities: nil)
         
-        if let popoverController = activityViewController.popoverPresentationController {
-            popoverController.sourceView = self
-            popoverController.sourceRect = source
-            popoverController.permittedArrowDirections = .any
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            if let popoverController = activityViewController.popoverPresentationController {
+                popoverController.sourceView = self
+                popoverController.sourceRect = source
+                popoverController.permittedArrowDirections = .any
+            }
         }
 
         present(activityViewController, animated: true, completion: nil)
