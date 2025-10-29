@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.4.6 - Released 29 Oct 2025
+
+- [Chat] iPad app now correctly shows the share sheet with a popover pointing to the cell the open button was clicked on.
+- [Source] Switched from using deprecated `UIApplication.shared.windows` to the scene-based API's.
+
 ## 4.4.5 - Released 9 Oct 2025
 
 - [Chat] Fixed cases where reopening the chat does not show newly received messages. 
